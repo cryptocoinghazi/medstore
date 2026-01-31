@@ -1,0 +1,262 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Role Enum
+enum Role {
+  patient
+  doctor
+  pharmacy
+  diagnostic
+  admin
+}
+
+// Appointment Status Enum
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  no_show @map("no-show")
+}
+
+// Consultation Type Enum
+enum ConsultationType {
+  online
+  offline
+}
+
+// Order Status Enum
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+model User {
+  id          String   @id @default(uuid())
+  mobile      String   @unique
+  email       String   @unique
+  name        String
+  role        Role
+  aadhaar     String?  @unique
+  address     Json?
+  is_verified Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  doctorProfile    Doctor?
+  pharmacyProfile  Pharmacy?
+  appointments     Appointment[] @relation("PatientAppointments")
+  orders           Order[]
+  prescriptions    Prescription[] @relation("PatientPrescriptions")
+  auditLogs        AuditLog[]
+
+  @@map("users")
+  @@index([mobile])
+  @@index([role])
+}
+
+model Doctor {
+  id               String   @id @default(uuid())
+  user_id          String   @unique
+  license_number   String   @unique
+  specialty        String
+  experience_years Int?
+  qualifications   Json?
+  consultation_fee Decimal  @default(0.00) @db.Decimal(10, 2)
+  is_available     Boolean  @default(true)
+  created_at       DateTime @default(now())
+
+  // Relations
+  user          User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+  prescriptions Prescription[]
+
+  @@map("doctors")
+  @@index([specialty])
+}
+
+model Pharmacy {
+  id             String   @id @default(uuid())
+  user_id        String   @unique
+  license_number String   @unique
+  pharmacy_name  String
+  address        Json?
+  gst_number     String   @unique
+  is_verified    Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  // Relations
+  user      User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  inventory Inventory[]
+  orders    Order[]
+
+  @@map("pharmacies")
+}
+
+model Medicine {
+  id                    String   @id @default(uuid())
+  name                  String
+  composition           String
+  manufacturer          String?
+  category              String?
+  base_price            Decimal  @default(0.00) @db.Decimal(10, 2)
+  requires_prescription Boolean  @default(false)
+  dosage_info           Json?
+  created_at            DateTime @default(now())
+
+  // Relations
+  inventory         Inventory[]
+  prescriptionItems PrescriptionItem[]
+  orderItems        OrderItem[]
+
+  @@map("medicines")
+  @@index([name])
+  @@index([category])
+}
+
+model Inventory {
+  id            String   @id @default(uuid())
+  pharmacy_id   String
+  medicine_id   String
+  quantity      Int
+  expiry_date   DateTime @db.Date
+  selling_price Decimal  @db.Decimal(10, 2)
+  reorder_level Int?
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  pharmacy Pharmacy @relation(fields: [pharmacy_id], references: [id])
+  medicine Medicine @relation(fields: [medicine_id], references: [id])
+
+  @@map("inventory")
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  patient_id        String
+  doctor_id         String
+  appointment_date  DateTime          @db.Date
+  time_slot         DateTime          @db.Time
+  status            AppointmentStatus @default(scheduled)
+  consultation_type ConsultationType
+  fee               Decimal           @default(0.00) @db.Decimal(10, 2)
+  symptoms          String?
+  notes             String?
+  created_at        DateTime          @default(now())
+
+  // Relations
+  patient       User           @relation("PatientAppointments", fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+
+  @@unique([doctor_id, appointment_date, time_slot])
+  @@map("appointments")
+  @@index([patient_id])
+  @@index([doctor_id])
+  @@index([appointment_date])
+}
+
+model Prescription {
+  id                   String   @id @default(uuid())
+  doctor_id            String
+  patient_id           String
+  appointment_id       String?
+  prescription_number  String   @unique
+  issue_date           DateTime @default(now()) @db.Date
+  general_instructions String?
+  created_at           DateTime @default(now())
+
+  // Relations
+  doctor      Doctor             @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  patient     User               @relation("PatientPrescriptions", fields: [patient_id], references: [id], onDelete: Cascade)
+  appointment Appointment?       @relation(fields: [appointment_id], references: [id])
+  items       PrescriptionItem[]
+
+  @@map("prescriptions")
+  @@index([patient_id])
+  @@index([doctor_id])
+}
+
+model PrescriptionItem {
+  id                   String @id @default(uuid())
+  prescription_id      String
+  medicine_id          String
+  dosage               String?
+  frequency            String?
+  duration_days        Int?
+  special_instructions String?
+
+  // Relations
+  prescription Prescription @relation(fields: [prescription_id], references: [id])
+  medicine     Medicine     @relation(fields: [medicine_id], references: [id])
+
+  @@map("prescription_items")
+}
+
+model Order {
+  id               String      @id @default(uuid())
+  user_id          String
+  pharmacy_id      String?
+  order_number     String      @unique
+  total_amount     Decimal     @db.Decimal(10, 2)
+  status           OrderStatus @default(pending)
+  delivery_address Json
+  payment_method   String?
+  payment_status   String      @default("pending")
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+
+  // Relations
+  user     User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy?   @relation(fields: [pharmacy_id], references: [id])
+  items    OrderItem[]
+
+  @@map("orders")
+  @@index([user_id])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  order_id    String
+  medicine_id String
+  quantity    Int
+  unit_price  Decimal @db.Decimal(10, 2)
+  total_price Decimal @db.Decimal(10, 2)
+
+  // Relations
+  order    Order    @relation(fields: [order_id], references: [id])
+  medicine Medicine @relation(fields: [medicine_id], references: [id])
+
+  @@map("order_items")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  user_id       String?
+  action        String
+  resource_type String
+  resource_id   String?
+  ip_address    String?
+  user_agent    String?
+  metadata      Json?
+  created_at    DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+}

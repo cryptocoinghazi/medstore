@@ -62,6 +62,7 @@ model User {
   orders           Order[]
   prescriptions    Prescription[] @relation("PatientPrescriptions")
   auditLogs        AuditLog[]
+  cart             Cart?
 
   @@map("users")
   @@index([mobile])
@@ -121,6 +122,7 @@ model Medicine {
   inventory         Inventory[]
   prescriptionItems PrescriptionItem[]
   orderItems        OrderItem[]
+  cartItems         CartItem[]
 
   @@map("medicines")
   @@index([name])
@@ -259,4 +261,32 @@ model AuditLog {
   user User? @relation(fields: [user_id], references: [id])
 
   @@map("audit_logs")
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  user_id    String     @unique
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+
+  // Relations
+  user  User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id          String   @id @default(uuid())
+  cart_id     String
+  medicine_id String
+  quantity    Int      @default(1)
+  added_at    DateTime @default(now())
+
+  // Relations
+  cart     Cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  medicine Medicine @relation(fields: [medicine_id], references: [id], onDelete: Cascade)
+
+  @@map("cart_items")
+  @@unique([cart_id, medicine_id])
 }

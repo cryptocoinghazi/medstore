@@ -22,8 +22,17 @@ export async function apiFetch<T = any>(endpoint: string, options: FetchOptions 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(error.message || `API Error: ${response.status}`);
+    let errorMessage = `API Error: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch (e) {
+      // If response is not JSON, try to get text
+      const errorText = await response.text().catch(() => '');
+      if (errorText) errorMessage += ` - ${errorText}`;
+    }
+    console.error(`API Fetch Error [${endpoint}]:`, errorMessage);
+    throw new Error(errorMessage);
   }
 
   return response.json();

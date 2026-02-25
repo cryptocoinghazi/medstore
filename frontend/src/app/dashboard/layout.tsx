@@ -9,6 +9,8 @@ import {
   LayoutDashboard, 
   Pill, 
   ShoppingBag, 
+  ShoppingCart,
+  Package,
   FileText, 
   LogOut, 
   Menu, 
@@ -54,8 +56,9 @@ export default function DashboardLayout({
       title: "Health & Care",
       items: [
         { href: '/dashboard/patient', label: 'Overview', icon: LayoutDashboard },
-        { href: '/dashboard/patient/medicines', label: 'Medicines', icon: Pill },
-        { href: '/dashboard/patient/orders', label: 'My Orders', icon: ShoppingBag },
+        { href: '/dashboard/medicines', label: 'Medicines', icon: Pill },
+        { href: '/dashboard/cart', label: 'My Cart', icon: ShoppingCart },
+        { href: '/dashboard/patient/orders', label: 'My Orders', icon: Package },
         { href: '/dashboard/patient/prescriptions', label: 'Prescriptions', icon: FileText },
       ]
     },

@@ -29,12 +29,13 @@
   - Profile Management API (`/auth/profile`) - Protected endpoint working.
   - LocalStorage caching implemented for instant dashboard rendering.
 
-## Phase 3: Core Features (Planned)
+## Phase 3: Core Features (In Progress)
 - [ ] **Medicine Marketplace**:
-  - [ ] **Backend**: Medicine Seeding script.
-  - [ ] **Backend**: Medicine Search API (`GET /medicines/search`).
-  - [ ] **Frontend**: Medicine Search UI on Home and Dashboard.
-  - [ ] **Frontend**: Cart Functionality.
+  - [x] **Backend**: Medicine Seeding script.
+  - [x] **Backend**: Medicine Search API (`GET /medicines/search`).
+  - [x] **Frontend**: Medicine Search UI on Home and Dashboard.
+  - [x] **Frontend**: Cart Functionality (Add, Remove, Update Quantity).
+  - [ ] **Frontend**: Checkout & Orders.
 - [ ] **Doctor Consultation**:
   - [ ] Doctor Search & Filtering.
   - [ ] Appointment Booking.

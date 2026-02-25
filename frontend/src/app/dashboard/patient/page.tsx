@@ -24,10 +24,16 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
 
 export default function PatientDashboard() {
   const [greeting, setGreeting] = useState('Good Morning');
   const [userName, setUserName] = useState('Patient');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [recentOrder, setRecentOrder] = useState<any>(null);
+  const router = useRouter();
   
   // Date formatting
   const currentDate = new Date().toLocaleDateString('en-IN', { 
@@ -44,8 +50,8 @@ export default function PatientDashboard() {
     else if (hour < 18) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
 
-    // Fetch User Profile
-    const fetchProfile = async () => {
+    // Fetch User Profile and Orders
+    const fetchData = async () => {
       try {
         // Try getting user from localStorage first for instant render
         const storedUser = localStorage.getItem('user');
@@ -60,11 +66,23 @@ export default function PatientDashboard() {
           // Update local storage with latest data
           localStorage.setItem('user', JSON.stringify(user));
         }
+
+        const orders = await apiFetch('/orders');
+        if (Array.isArray(orders)) {
+          const active = orders.filter((o: any) => 
+            ['pending', 'confirmed', 'processing', 'shipped'].includes(o.status)
+          ).length;
+          setActiveOrdersCount(active);
+          
+          if (orders.length > 0) {
+            setRecentOrder(orders[0]); // Orders are sorted by date desc
+          }
+        }
       } catch (error) {
-        console.error('Failed to fetch profile', error);
+        console.error('Failed to fetch data', error);
       }
     };
-    fetchProfile();
+    fetchData();
   }, []);
 
   return (
@@ -93,14 +111,24 @@ export default function PatientDashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="relative hidden lg:block w-72 group">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (searchQuery.trim()) {
+                router.push(`/dashboard/medicines?q=${encodeURIComponent(searchQuery)}`);
+              }
+            }}
+            className="relative hidden lg:block w-72 group"
+          >
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
             <Input 
               type="search" 
-              placeholder="Search medicines, doctors..." 
+              placeholder="Search medicines..." 
               className="pl-10 h-10 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all shadow-sm rounded-full group-hover:border-blue-300" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </form>
           <Button variant="outline" size="icon" className="rounded-full relative hover:bg-blue-50 border-gray-200 h-10 w-10 transition-colors">
             <Bell className="h-5 w-5 text-gray-600" />
             <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white"></span>
@@ -130,19 +158,19 @@ export default function PatientDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-end gap-2 mt-2">
-                <div className="text-3xl font-bold text-gray-900">0</div>
-                <span className="text-xs font-medium text-gray-500 mb-1.5 bg-white px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
-                  In progress
-                </span>
-              </div>
-              <div className="mt-4 pt-4 border-t border-blue-50 flex items-center justify-between text-xs font-medium">
-                <span className="text-gray-500">Track delivery status</span>
-                <span className="text-blue-600 flex items-center group-hover:translate-x-1 transition-transform">
-                  View Orders <ArrowRight className="h-3 w-3 ml-1" />
-                </span>
-              </div>
-            </CardContent>
+            <div className="flex items-end gap-2 mt-2">
+              <div className="text-3xl font-bold text-gray-900">{activeOrdersCount}</div>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 bg-white px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
+                In progress
+              </span>
+            </div>
+            <div className="mt-4 pt-4 border-t border-blue-50 flex items-center justify-between text-xs font-medium">
+              <span className="text-gray-500">Track delivery status</span>
+              <span className="text-blue-600 flex items-center group-hover:translate-x-1 transition-transform">
+                View Orders <ArrowRight className="h-3 w-3 ml-1" />
+              </span>
+            </div>
+          </CardContent>
           </Card>
         </Link>
 
@@ -178,7 +206,7 @@ export default function PatientDashboard() {
         </Link>
 
         {/* Health Savings */}
-        <Link href="/dashboard/patient/profile" className="group block h-full">
+        <Link href="/dashboard/patient/wallet" className="group block h-full">
           <Card className="relative overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-green-50 via-white to-white h-full ring-1 ring-black/5 group-hover:ring-green-200">
             <div className="absolute top-0 right-0 p-4 opacity-[0.08] group-hover:opacity-15 transition-opacity">
               <IndianRupee className="h-24 w-24 text-green-600 transform -rotate-12 group-hover:rotate-0 transition-transform duration-500" />
@@ -193,9 +221,9 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-2 mt-2">
-                <div className="text-3xl font-bold text-gray-900">₹0</div>
+                <div className="text-3xl font-bold text-gray-900">--</div>
                 <span className="text-xs font-medium text-green-700 mb-1.5 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Lifetime Savings
+                  <TrendingUp className="h-3 w-3" /> Coming Soon
                 </span>
               </div>
               <div className="mt-4 pt-4 border-t border-green-50 flex items-center justify-between text-xs font-medium">
@@ -216,9 +244,11 @@ export default function PatientDashboard() {
             <Activity className="h-5 w-5 text-blue-600" />
             Quick Actions
           </h2>
-          <Button variant="ghost" size="sm" className="text-sm text-blue-600 hover:bg-blue-50">
-            View All Services
-          </Button>
+          <Link href="/dashboard/patient/services">
+            <Button variant="ghost" size="sm" className="text-sm text-blue-600 hover:bg-blue-50">
+              View All Services
+            </Button>
+          </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Primary Action - Upload Rx */}
@@ -239,7 +269,7 @@ export default function PatientDashboard() {
           </Link>
 
           {/* Secondary Action - Search Medicines */}
-          <Link href="/dashboard/patient/medicines" className="md:col-span-1 group">
+          <Link href="/dashboard/medicines" className="md:col-span-1 group">
             <Card className="h-full border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all cursor-pointer bg-white group-hover:bg-purple-50/30">
               <CardContent className="flex flex-col items-start justify-center p-6 h-full">
                 <div className="p-3 bg-purple-50 rounded-xl mb-4 group-hover:bg-purple-100 transition-colors">
@@ -286,42 +316,51 @@ export default function PatientDashboard() {
             <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
               <Clock className="h-4 w-4 text-blue-600" />
             </div>
-            <div>
-              <CardTitle className="text-base font-semibold text-gray-900">Recent Timeline</CardTitle>
-              <p className="text-xs text-gray-500 mt-0.5">Your latest health activities</p>
-            </div>
+            <h2 className="text-lg font-bold text-gray-900">Recent Timeline</h2>
           </div>
-          <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50 hover:text-blue-700 text-xs font-medium">
-            View Full History
-          </Button>
+          <Link href="/dashboard/patient/orders">
+            <Button variant="link" className="text-blue-600 h-auto p-0 hover:no-underline flex items-center gap-1 group">
+              View Full History <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white">
-            <div className="relative mb-6 group cursor-default">
-              <div className="absolute inset-0 bg-blue-100 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity"></div>
-              <div className="relative bg-white p-5 rounded-full shadow-sm border border-gray-100 group-hover:scale-105 transition-transform duration-300">
-                <Clock className="h-10 w-10 text-blue-500" />
-              </div>
+        <CardContent className="p-6">
+          {recentOrder ? (
+            <div className="flex items-center gap-4">
+               <div className="p-3 bg-blue-100 rounded-full">
+                  <Package className="h-6 w-6 text-blue-600" />
+               </div>
+               <div>
+                  <p className="font-semibold text-gray-900">Order Placed: {recentOrder.order_number}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(recentOrder.created_at).toLocaleDateString()} - ₹{recentOrder.total_amount}
+                  </p>
+               </div>
+               <div className="ml-auto">
+                 <Link href={`/dashboard/patient/orders`}>
+                    <Button variant="outline" size="sm">View Details</Button>
+                 </Link>
+               </div>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Your timeline is fresh</h3>
-            <p className="text-gray-500 max-w-sm mb-8 text-sm leading-relaxed px-4">
+          ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-gray-50 p-4 rounded-full mb-4">
+              <Clock className="h-8 w-8 text-gray-300" />
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Your timeline is fresh</h3>
+            <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">
               We're ready to log your health journey. Once you order medicines or consult a doctor, it will appear here.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-md px-4">
-              <Link href="/dashboard/patient/medicines" className="flex-1">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all h-10">
-                  <ShoppingBag className="mr-2 h-4 w-4" />
-                  Order Medicines
-                </Button>
-              </Link>
-              <Link href="/dashboard/patient/doctors" className="flex-1">
-                <Button variant="outline" className="w-full border-gray-200 hover:bg-gray-50 text-gray-700 h-10">
-                  <Stethoscope className="mr-2 h-4 w-4" />
-                  Find a Doctor
-                </Button>
-              </Link>
+            <div className="flex gap-3">
+              <Button onClick={() => router.push('/dashboard/medicines')} className="bg-blue-600 hover:bg-blue-700">
+                Order Medicines
+              </Button>
+              <Button variant="outline" onClick={() => router.push('/dashboard/patient/doctors')}>
+                Find a Doctor
+              </Button>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

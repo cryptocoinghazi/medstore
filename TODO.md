@@ -27,12 +27,12 @@
 - **Orders**:
   - Order History Listing
   - Order Details View
+- **Prescriptions**:
+  - Upload Prescription (Image/PDF)
+  - View Uploaded Prescriptions
+  - Backend Storage (Supabase) & Database Tracking
 
 ## In Progress / Partially Implemented (🚧)
-- **Prescriptions**:
-  - UI Placeholder created
-  - "Coming Soon" page linked
-  - *Next Step*: Implement file upload & backend storage for Rx.
 - **Health Wallet**:
   - UI Placeholder created
   - "Coming Soon" page linked

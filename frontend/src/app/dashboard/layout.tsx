@@ -5,19 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
-import { 
-  LayoutDashboard, 
-  Pill, 
-  ShoppingBag, 
-  ShoppingCart,
-  Package,
-  FileText, 
-  LogOut, 
-  Menu, 
-  X, 
-  User, 
-  Settings 
-} from 'lucide-react';
+import { LayoutDashboard, Pill, ShoppingCart, Package, FileText, User, Settings, LogOut, Menu, X, Wallet, Calendar, TestTube } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -57,9 +45,12 @@ export default function DashboardLayout({
       items: [
         { href: '/dashboard/patient', label: 'Overview', icon: LayoutDashboard },
         { href: '/dashboard/medicines', label: 'Medicines', icon: Pill },
+        { href: '/dashboard/patient/appointments', label: 'Appointments', icon: Calendar },
+        { href: '/dashboard/patient/lab-tests', label: 'Lab Tests', icon: TestTube },
         { href: '/dashboard/cart', label: 'My Cart', icon: ShoppingCart },
         { href: '/dashboard/patient/orders', label: 'My Orders', icon: Package },
         { href: '/dashboard/patient/prescriptions', label: 'Prescriptions', icon: FileText },
+        { href: '/dashboard/patient/wallet', label: 'Health Wallet', icon: Wallet },
       ]
     },
     {

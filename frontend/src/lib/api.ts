@@ -12,6 +12,11 @@ export async function apiFetch<T = any>(endpoint: string, options: FetchOptions 
     ...options.headers,
   };
 
+  // If body is FormData, delete Content-Type to let browser set boundary
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

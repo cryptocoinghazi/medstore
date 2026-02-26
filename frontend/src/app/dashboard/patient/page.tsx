@@ -20,7 +20,9 @@ import {
   Calendar,
   ArrowRight,
   ShieldCheck,
-  Activity
+  Activity,
+  User,
+  MapPin
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
@@ -32,7 +34,11 @@ export default function PatientDashboard() {
   const [userName, setUserName] = useState('Patient');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [prescriptionsCount, setPrescriptionsCount] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [recentOrder, setRecentOrder] = useState<any>(null);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const [labBookings, setLabBookings] = useState<any[]>([]);
   const router = useRouter();
   
   // Date formatting
@@ -78,6 +84,35 @@ export default function PatientDashboard() {
             setRecentOrder(orders[0]); // Orders are sorted by date desc
           }
         }
+        
+        // Fetch Prescriptions Count
+        const prescriptions = await apiFetch('/prescriptions');
+        if (Array.isArray(prescriptions)) {
+          setPrescriptionsCount(prescriptions.length);
+        }
+
+        // Fetch Wallet Balance
+        const wallet = await apiFetch('/wallet');
+        if (wallet && wallet.balance !== undefined) {
+          setWalletBalance(Number(wallet.balance));
+        }
+
+        // Fetch Appointments
+        const appointments = await apiFetch('/appointments');
+        if (Array.isArray(appointments)) {
+          setUpcomingAppointments(appointments.filter((a: any) => 
+            ['scheduled', 'rescheduled'].includes(a.status)
+          ).sort((a: any, b: any) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()));
+        }
+
+        // Fetch Lab Bookings
+        const bookings = await apiFetch('/lab-tests/bookings');
+        if (Array.isArray(bookings)) {
+          setLabBookings(bookings.filter((b: any) => 
+            ['scheduled', 'pending'].includes(b.status)
+          ).sort((a: any, b: any) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime()));
+        }
+
       } catch (error) {
         console.error('Failed to fetch data', error);
       }
@@ -190,15 +225,15 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-2 mt-2">
-                <div className="text-3xl font-bold text-gray-900">0</div>
-                <span className="text-xs font-medium text-amber-700 mb-1.5 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> Action Needed
+                <div className="text-3xl font-bold text-gray-900">{prescriptionsCount}</div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${prescriptionsCount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {prescriptionsCount > 0 ? <><AlertCircle className="h-3 w-3" /> Uploaded</> : 'No uploads'}
                 </span>
               </div>
               <div className="mt-4 pt-4 border-t border-amber-50 flex items-center justify-between text-xs font-medium">
-                <span className="text-gray-500">Pending approvals</span>
+                <span className="text-gray-500">Manage prescriptions</span>
                 <span className="text-amber-700 flex items-center group-hover:translate-x-1 transition-transform">
-                  Review Now <ArrowRight className="h-3 w-3 ml-1" />
+                  View All <ArrowRight className="h-3 w-3 ml-1" />
                 </span>
               </div>
             </CardContent>
@@ -221,10 +256,18 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-2 mt-2">
-                <div className="text-3xl font-bold text-gray-900">--</div>
-                <span className="text-xs font-medium text-green-700 mb-1.5 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Coming Soon
-                </span>
+                <div className="text-3xl font-bold text-gray-900">
+                  {walletBalance !== null ? `₹${walletBalance.toFixed(2)}` : '--'}
+                </div>
+                {walletBalance === null ? (
+                  <span className="text-xs font-medium text-green-700 mb-1.5 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Coming Soon
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium text-green-700 mb-1.5 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Active
+                  </span>
+                )}
               </div>
               <div className="mt-4 pt-4 border-t border-green-50 flex items-center justify-between text-xs font-medium">
                 <span className="text-gray-500">Available balance</span>
@@ -236,6 +279,97 @@ export default function PatientDashboard() {
           </Card>
         </Link>
       </div>
+
+      {/* Scheduled Care Section */}
+      {(upcomingAppointments.length > 0 || labBookings.length > 0) && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            Scheduled Care
+          </h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Upcoming Appointments */}
+            {upcomingAppointments.length > 0 && (
+              <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 border-b border-gray-50">
+                  <CardTitle className="text-sm font-semibold text-gray-600 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Stethoscope className="h-4 w-4 text-blue-600" />
+                      Next Appointment
+                    </span>
+                    <Link href="/dashboard/patient/appointments" className="text-xs text-blue-600 hover:underline flex items-center">
+                      View All <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {upcomingAppointments.slice(0, 1).map((apt: any) => (
+                    <div key={apt.id} className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <User className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">Dr. {apt.doctor?.user?.name || 'Doctor'}</h3>
+                        <p className="text-sm text-gray-500 capitalize">{apt.consultation_type} Consultation</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(apt.appointment_date).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(apt.time_slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Upcoming Lab Tests */}
+            {labBookings.length > 0 && (
+              <Card className="border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 border-b border-gray-50">
+                  <CardTitle className="text-sm font-semibold text-gray-600 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <TestTube className="h-4 w-4 text-purple-600" />
+                      Upcoming Lab Test
+                    </span>
+                    <Link href="/dashboard/patient/lab-tests" className="text-xs text-purple-600 hover:underline flex items-center">
+                      View All <ChevronRight className="h-3 w-3" />
+                    </Link>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {labBookings.slice(0, 1).map((booking: any) => (
+                    <div key={booking.id} className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <TestTube className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">{booking.test?.name || 'Lab Test'}</h3>
+                        <p className="text-sm text-gray-500">{booking.home_collection ? 'Home Collection' : 'Lab Visit'}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(booking.booking_date).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(booking.time_slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div>
